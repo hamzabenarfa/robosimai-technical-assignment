@@ -9,6 +9,7 @@ from app.database import get_db
 from app.schemas import (
     SceneCreate,
     SceneDetail,
+    SceneExport,
     SceneSummary,
     SceneUpdate,
 )
@@ -27,6 +28,23 @@ def list_scenes(db: Session = Depends(get_db)) -> list[SceneSummary]:
 def create_scene(payload: SceneCreate, db: Session = Depends(get_db)) -> SceneDetail:
     scene = scene_service.create_scene(db, payload)
     return SceneDetail.model_validate(scene)
+
+
+# /import must be declared BEFORE the parametric /{scene_id} routes so FastAPI
+# matches the literal segment, not a UUID-shaped path parameter.
+@router.post("/import", response_model=SceneDetail, status_code=status.HTTP_201_CREATED)
+def import_scene_route(
+    payload: SceneExport, db: Session = Depends(get_db)
+) -> SceneDetail:
+    scene = scene_service.import_scene(db, payload)
+    return SceneDetail.model_validate(scene)
+
+
+@router.get("/{scene_id}/export", response_model=SceneExport)
+def export_scene_route(
+    scene_id: uuid.UUID, db: Session = Depends(get_db)
+) -> SceneExport:
+    return scene_service.export_scene(db, scene_id)
 
 
 @router.get("/{scene_id}", response_model=SceneDetail)

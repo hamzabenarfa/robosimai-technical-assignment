@@ -54,6 +54,30 @@ export default function SceneEditorPage() {
     void loadScene();
   }, [loadScene]);
 
+  async function handleExport() {
+    if (!scene) return;
+    try {
+      const data = await api.exportScene(scene.id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${scene.name.replace(/[^a-z0-9-_]+/gi, "_")}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.show("Scene exported", "success");
+    } catch (e) {
+      toast.show(
+        e instanceof ApiException ? e.message : "Export failed",
+        "error",
+      );
+    }
+  }
+
   async function handleSave() {
     if (!scene) return;
     const dirtyIds = Object.keys(dirty);
@@ -124,6 +148,13 @@ export default function SceneEditorPage() {
           {scene.description && (
             <p className="mt-1 text-xs text-slate-400">{scene.description}</p>
           )}
+          <button
+            type="button"
+            onClick={handleExport}
+            className="mt-3 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-300 hover:border-emerald-500 hover:text-emerald-300"
+          >
+            ↓ Export scene as JSON
+          </button>
         </div>
         <AddObjectMenu />
       </aside>

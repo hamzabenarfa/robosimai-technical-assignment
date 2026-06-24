@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiException } from "@/api/client";
 import { useToast } from "@/components/Toast";
-import type { SceneSummary } from "@/types";
+import type { SceneExport, SceneSummary } from "@/types";
 
 export default function SceneListPage() {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
@@ -10,6 +10,7 @@ export default function SceneListPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -50,6 +51,27 @@ export default function SceneListPage() {
     }
   }
 
+  async function handleImportFile(file: File) {
+    let payload: SceneExport;
+    try {
+      const text = await file.text();
+      payload = JSON.parse(text);
+    } catch {
+      toast.show("Invalid JSON file", "error");
+      return;
+    }
+    try {
+      const scene = await api.importScene(payload);
+      toast.show("Scene imported", "success");
+      navigate(`/scenes/${scene.id}`);
+    } catch (e) {
+      toast.show(
+        e instanceof ApiException ? e.message : "Import failed",
+        "error",
+      );
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Delete this scene?")) return;
     try {
@@ -63,11 +85,31 @@ export default function SceneListPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Scenes</h1>
-        <p className="text-xs text-slate-500">
-          {scenes.length} {scenes.length === 1 ? "scene" : "scenes"}
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-emerald-500 hover:text-emerald-300"
+          >
+            ↑ Import JSON
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportFile(file);
+              e.target.value = "";
+            }}
+          />
+          <p className="text-xs text-slate-500">
+            {scenes.length} {scenes.length === 1 ? "scene" : "scenes"}
+          </p>
+        </div>
       </div>
 
       <form

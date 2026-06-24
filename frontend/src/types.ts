@@ -58,6 +58,21 @@ export interface EventLog {
   timestamp: string;
 }
 
+export interface SceneObjectExport {
+  type: ObjectType;
+  position: Vec3;
+  rotation: Vec3;
+  scale: Vec3;
+  metadata: Record<string, unknown>;
+}
+
+export interface SceneExport {
+  schema_version: number;
+  name: string;
+  description: string | null;
+  objects: SceneObjectExport[];
+}
+
 export interface ApiError {
   detail: string;
   code: string;

@@ -2,6 +2,7 @@ import type {
   ApiError,
   EventLog,
   SceneDetail,
+  SceneExport,
   SceneObject,
   SceneSummary,
 } from "@/types";
@@ -90,4 +91,12 @@ export const api = {
 
   listEvents: (sceneId: string, limit = 50) =>
     request<EventLog[]>(`/scenes/${sceneId}/events?limit=${limit}`),
+
+  exportScene: (sceneId: string) =>
+    request<SceneExport>(`/scenes/${sceneId}/export`),
+  importScene: (body: SceneExport) =>
+    request<SceneDetail>(`/scenes/import`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };

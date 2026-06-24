@@ -91,6 +91,23 @@ class SceneDetail(BaseModel):
     objects: list[SceneObjectRead]
 
 
+class SceneObjectExport(BaseModel):
+    """Transport shape for export/import. No server-assigned ids or timestamps."""
+
+    type: ObjectType
+    position: Vec3 = Field(default_factory=Vec3)
+    rotation: Vec3 = Field(default_factory=Vec3)
+    scale: Vec3One = Field(default_factory=Vec3One)
+    metadata: dict = Field(default_factory=dict)
+
+
+class SceneExport(BaseModel):
+    schema_version: int = 1
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = None
+    objects: list[SceneObjectExport] = Field(default_factory=list)
+
+
 class EventLogRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

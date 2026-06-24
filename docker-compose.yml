@@ -6,7 +6,9 @@ services:
       POSTGRES_PASSWORD: robosim
       POSTGRES_DB: robosim
     ports:
-      - "5432:5432"
+      # Host-side port override via env so the stack coexists with other
+      # local Postgres instances. Defaults to the canonical 5432.
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -19,12 +21,12 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://robosim:robosim@postgres:5432/robosim
-      CORS_ORIGINS: http://localhost:8080
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8080}"
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
 
   frontend:
     build:
@@ -34,7 +36,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "8080:80"
+      - "${FRONTEND_PORT:-8080}:80"
 
 volumes:
   postgres-data:

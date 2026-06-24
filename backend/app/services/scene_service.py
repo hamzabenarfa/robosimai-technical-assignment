@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.errors import SceneNotFound
 from app.models import Scene, SceneObject
-from app.schemas import SceneCreate, SceneUpdate
+from app.schemas import SceneCreate, SceneExport, SceneUpdate
 from app.services.event_service import log_event
 
 
@@ -77,3 +77,55 @@ def delete_scene(db: Session, scene_id: uuid.UUID) -> None:
     scene = get_scene(db, scene_id)
     db.delete(scene)
     db.commit()
+
+
+def export_scene(db: Session, scene_id: uuid.UUID) -> SceneExport:
+    scene = get_scene(db, scene_id)
+    return SceneExport(
+        name=scene.name,
+        description=scene.description,
+        objects=[
+            {
+                "type": o.type,
+                "position": o.position,
+                "rotation": o.rotation,
+                "scale": o.scale,
+                "metadata": o.meta,
+            }
+            for o in scene.objects
+        ],
+    )
+
+
+def import_scene(db: Session, payload: SceneExport) -> Scene:
+    scene = Scene(name=payload.name, description=payload.description)
+    db.add(scene)
+    db.flush()
+    log_event(
+        db,
+        scene_id=scene.id,
+        action="scene.created",
+        payload={"name": scene.name, "imported": True, "object_count": len(payload.objects)},
+    )
+
+    for obj in payload.objects:
+        row = SceneObject(
+            scene_id=scene.id,
+            type=obj.type,
+            position=obj.position.model_dump(),
+            rotation=obj.rotation.model_dump(),
+            scale=obj.scale.model_dump(),
+            meta=obj.metadata,
+        )
+        db.add(row)
+        db.flush()
+        log_event(
+            db,
+            scene_id=scene.id,
+            action="object.added",
+            payload={"object_id": str(row.id), "type": row.type.value, "imported": True},
+        )
+
+    db.commit()
+    db.refresh(scene)
+    return scene

@@ -24,6 +24,13 @@ That's the only command. Three services come up:
 
 The backend automatically applies Alembic migrations on start, so the database is ready as soon as the stack is healthy.
 
+If those ports are already in use, override them per-run without editing the file:
+
+```bash
+FRONTEND_PORT=8090 BACKEND_PORT=8001 POSTGRES_PORT=5433 \
+CORS_ORIGINS=http://localhost:8090 docker compose up --build
+```
+
 To stop and wipe the database:
 
 ```bash
@@ -112,6 +119,15 @@ Base path: `/api`. JSON in, JSON out. Interactive docs at `/docs`.
 | ------ | ------------------------------------------ | ------------------------------ |
 | GET    | `/api/scenes/{id}/events?limit=50`         | Recent event logs (newest first) |
 
+### Import / export (bonus)
+
+| Method | Path                          | Purpose                                          |
+| ------ | ----------------------------- | ------------------------------------------------ |
+| GET    | `/api/scenes/{id}/export`     | Download scene + objects as portable JSON         |
+| POST   | `/api/scenes/import`          | Create a new scene from an uploaded JSON payload  |
+
+The editor has an **↓ Export scene as JSON** button; the scene list has **↑ Import JSON**. Import re-generates server IDs so a round-trip yields a clean duplicate.
+
 ### Error response shape
 
 Every error — 422, 404, 500 — comes out the same way:
@@ -139,6 +155,10 @@ Validation errors additionally include the underlying field errors under `errors
 - **Event log is first-class.** Every mutating service writes one `event_logs` row in the same transaction (`scene.created`, `object.added`, `object.updated`, `object.deleted`, `scene.updated`). The editor's bottom panel shows them newest-first.
 - **Consistent error envelope.** A single exception handler maps `AppError`, `HTTPException`, validation errors, and uncaught exceptions to `{detail, code}` — directly addressing the "Error handling" rubric line.
 - **Non-root container user.** The backend container drops to UID 1001 after deps are installed.
+- **Viewport thumbnails.** When the user adds an object or hits Save, the React Three Fiber canvas is sampled (`preserveDrawingBuffer: true`), downscaled to 480×270, encoded as JPEG, and stored on `scenes.thumbnail` (TEXT, base64 data URL). The scene list shows those as card art. Stored inline because the volume is tiny (~20 KB each) for the take-home; a real product would push them to object storage.
+- **Blender-style viewport controls.** Middle-mouse rotates, right-mouse pans, wheel zooms. Left-mouse also rotates as a trackpad fallback. Click selects through to the mesh (stopPropagation is set on the mesh's onClick).
+- **Keyboard parity with toolbar.** G/R/S switch gizmo mode, F frames the selected object, Numpad 1/3/7 snap to front/right/top, X/Delete removes the selection, Esc deselects. The vertical icon toolbar mirrors every shortcut so mouse-only users have the same affordances. A `?` overlay summarises everything. Keys are ignored when an input is focused.
+- **Decoupled viewport commands.** Toolbar buttons and keyboard handlers both dispatch a single `viewport:cmd` window event; a listener inside the R3F canvas runs the camera/controls work. One implementation, two surfaces.
 
 ---
 
@@ -151,6 +171,8 @@ Validation errors additionally include the underlying field errors under `errors
 - **Primitives only.** No real GLTF robot meshes (intentional, see §4).
 - **No optimistic UI.** Object adds round-trip to the server before showing locally.
 - **Scene list is unpaginated.** Fine for the take-home; a `limit/offset` cursor would be the obvious next step.
+- **Thumbnails live in the DB.** Convenient for one-command deploy, but a real product would push them to object storage and serve via a CDN.
+- **Frontend bundle is single-chunk** (~1 MB unminified). Vite warns; lazy-loading the R3F editor route would shrink the landing page.
 
 ---
 
@@ -161,11 +183,40 @@ Validation errors additionally include the underlying field errors under `errors
 - Real GLTF model for one type (e.g. the robot) as a polish step.
 - Pagination + search on the scene list.
 - Websocket live event stream so multiple users see edits in real time.
-- Scene import/export JSON (cheap and high-impact; left for a follow-up).
-- Backend pytest coverage for the service layer; Playwright happy-path E2E.
-- GitHub Actions CI (lint + test on push).
+- Frontend Playwright happy-path E2E.
+- Route-level code splitting to shrink the initial bundle below Vite's 500 KB warning threshold.
+- Object storage + signed-URL serving for thumbnails.
 
 ---
+
+## Tests
+
+Backend service-layer tests run against a dedicated `robosim_test` database using a SAVEPOINT-rollback fixture (see `backend/tests/conftest.py`), so they don't pollute dev data.
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+TEST_DATABASE_URL=postgresql+psycopg://robosim:robosim@localhost:5433/robosim_test \
+  pytest
+```
+
+GitHub Actions runs the same suite (with a Postgres service container) plus a frontend `bun run build` on every push — see `.github/workflows/ci.yml`.
+
+## Editor controls
+
+| Action | Mouse | Key |
+| --- | --- | --- |
+| Orbit camera | middle drag (left as trackpad fallback) | — |
+| Pan camera | right drag | — |
+| Zoom | wheel | — |
+| Select object | click | — |
+| Deselect | click empty | `Esc` |
+| Gizmo: translate / rotate / scale | toolbar | `G` / `R` / `S` |
+| Frame selected | toolbar | `F` |
+| Front / right / top view | toolbar | Numpad `1` / `3` / `7` |
+| Delete selected | toolbar | `X` or `Delete` |
+
+The `?` button in the top-right of the viewport shows the same list in-app.
 
 ## Repository layout
 
