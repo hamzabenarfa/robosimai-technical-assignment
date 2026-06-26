@@ -1,5 +1,7 @@
 # RoboSim Scene Manager
 
+> 🎥 **Demo video → [`docs/demo.mp4`](docs/demo.mp4)** — full ~5:40 walkthrough (startup, editor flow, persistence, API). Click to play it on GitHub; the file also lives in this repo's `docs/` folder.
+
 A small full-stack web app to create, view, edit, and save simple 3D robotics simulation scenes.
 
 This is **not** a simulator — it's a CRUD app with a 3D viewport, built as a take-home assignment.
@@ -12,12 +14,6 @@ This is **not** a simulator — it's a CRUD app with a 3D viewport, built as a t
 >
 > **Stack:** FastAPI + PostgreSQL · React + R3F + TanStack Query + Zustand · Docker Compose.
 > **Read next:** [Architecture](#2-architecture) · [API](#3-api-overview) · [Design decisions](#4-design-decisions) · [Limitations](#5-known-limitations).
-
----
-
-## Demo
-
-A full walkthrough — one-command startup, the editor (create scene → add objects → select → edit → save), persistence, and direct API testing — is recorded in **[`docs/demo.mp4`](docs/demo.mp4)** (~5:40).
 
 ---
 
