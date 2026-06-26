@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, ApiException } from "@/api/client";
+import { ApiException, api } from "@/api/client";
+import { useScene, useEvents } from "@/api/queries";
+import { useSaveScene } from "@/api/mutations";
+import { SceneEditorSkeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { useSceneStore } from "@/store/useSceneStore";
-import { useToast } from "@/components/Toast";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { SceneCanvas } from "@/components/viewer/SceneCanvas";
 import { AddObjectMenu } from "@/components/inspector/AddObjectMenu";
 import { Inspector } from "@/components/inspector/Inspector";
 import { EventLogPanel } from "@/components/EventLogPanel";
 import { HelpOverlay } from "@/components/HelpOverlay";
 import { ViewportToolbar } from "@/components/ViewportToolbar";
+import { ExportIcon } from "@/components/icons";
 import { captureViewport } from "@/lib/captureViewport";
-import type { EventLog } from "@/types";
+import { downloadJson, toSafeFilename } from "@/lib/sceneFile";
+import type { SceneDetail } from "@/schemas";
 
 export default function SceneEditorPage() {
   const { sceneId } = useParams<{ sceneId: string }>();
@@ -18,57 +24,25 @@ export default function SceneEditorPage() {
   const setScene = useSceneStore((s) => s.setScene);
   const dirty = useSceneStore((s) => s.dirty);
   const clearDirty = useSceneStore((s) => s.clearDirty);
-  const [events, setEvents] = useState<EventLog[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const toast = useToast();
 
-  const refreshEvents = useCallback(async () => {
-    if (!sceneId) return;
-    try {
-      const data = await api.listEvents(sceneId);
-      setEvents(data);
-    } catch {
-      // non-fatal — don't toast on every poll
-    }
-  }, [sceneId]);
+  const { data: detail, isLoading } = useScene(sceneId);
+  const { data: events = [] } = useEvents(sceneId);
+  const saveScene = useSaveScene();
 
-  const loadScene = useCallback(async () => {
-    if (!sceneId) return;
-    setLoading(true);
-    try {
-      const data = await api.getScene(sceneId);
-      setScene(data);
-      await refreshEvents();
-    } catch (e) {
-      toast.show(
-        e instanceof ApiException ? e.message : "Failed to load scene",
-        "error",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [sceneId, setScene, refreshEvents, toast]);
+  const dirtyCount = Object.keys(dirty).length;
+  useUnsavedChangesGuard(dirtyCount > 0);
 
+  // The query owns server state; the store owns live editing. Copy once.
   useEffect(() => {
-    void loadScene();
-  }, [loadScene]);
+    if (detail) setScene(detail);
+  }, [detail, setScene]);
 
   async function handleExport() {
     if (!scene) return;
     try {
       const data = await api.exportScene(scene.id);
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${scene.name.replace(/[^a-z0-9-_]+/gi, "_")}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadJson(`${toSafeFilename(scene.name)}.json`, data);
       toast.show("Scene exported", "success");
     } catch (e) {
       toast.show(
@@ -78,111 +52,169 @@ export default function SceneEditorPage() {
     }
   }
 
-  async function handleSave() {
+  function handleSave() {
     if (!scene) return;
     const dirtyIds = Object.keys(dirty);
     if (dirtyIds.length === 0) {
       toast.show("Nothing to save", "info");
       return;
     }
-    setSaving(true);
-    try {
-      for (const id of dirtyIds) {
-        const obj = scene.objects.find((o) => o.id === id);
-        if (!obj) continue;
-        await api.updateObject(scene.id, obj.id, {
-          position: obj.position,
-          rotation: obj.rotation,
-          scale: obj.scale,
-          metadata: obj.metadata,
-        });
-      }
-      const thumbnail = captureViewport();
-      if (thumbnail) {
-        await api.updateScene(scene.id, { thumbnail });
-      }
-      clearDirty();
-      await refreshEvents();
-      toast.show(`Saved ${dirtyIds.length} object(s)`, "success");
-    } catch (e) {
-      toast.show(e instanceof ApiException ? e.message : "Save failed", "error");
-    } finally {
-      setSaving(false);
-    }
+    saveScene.mutate(
+      { scene, dirtyIds, thumbnail: captureViewport() },
+      {
+        onSuccess: (count) => {
+          clearDirty();
+          toast.show(`Saved ${count} object(s)`, "success");
+        },
+        onError: (e) =>
+          toast.show(
+            e instanceof ApiException ? e.message : "Save failed",
+            "error",
+          ),
+      },
+    );
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center text-slate-500">
-        Loading scene…
-      </div>
-    );
+  if (isLoading) {
+    return <SceneEditorSkeleton />;
   }
 
   if (!scene) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-400">
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-ink-soft">
         <p>Scene not found.</p>
-        <Link to="/" className="text-emerald-400 hover:text-emerald-300">
+        <Link to="/" className="font-medium text-accent hover:text-accent-hover">
           ← Back to scenes
         </Link>
       </div>
     );
   }
 
-  const dirtyCount = Object.keys(dirty).length;
-
   return (
-    <div className="grid h-full grid-cols-[220px_1fr_320px] grid-rows-[1fr_180px] gap-0">
-      <aside className="row-span-2 flex flex-col gap-4 border-r border-slate-800 bg-slate-900 p-4">
-        <div>
-          <Link
-            to="/"
-            className="text-xs text-slate-400 hover:text-slate-200"
-          >
-            ← All scenes
-          </Link>
-          <h2 className="mt-2 text-lg font-semibold text-white">
-            {scene.name}
-          </h2>
-          {scene.description && (
-            <p className="mt-1 text-xs text-slate-400">{scene.description}</p>
-          )}
-          <button
-            type="button"
-            onClick={handleExport}
-            className="mt-3 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-300 hover:border-emerald-500 hover:text-emerald-300"
-          >
-            ↓ Export scene as JSON
-          </button>
-        </div>
-        <AddObjectMenu />
-      </aside>
+    <div className="grid h-full grid-cols-1 grid-rows-[minmax(50vh,1fr)_auto_auto_auto] md:grid-cols-[220px_1fr_320px] md:grid-rows-[1fr_180px]">
+      <ScenePanel scene={scene} onExport={handleExport} />
 
-      <section className="relative bg-slate-950">
+      <section className="relative min-h-[50vh] bg-viewport md:min-h-0 md:col-start-2 md:row-start-1">
         <SceneCanvas />
         <ViewportToolbar />
         <HelpOverlay />
       </section>
 
-      <aside className="row-span-2 flex flex-col gap-4 border-l border-slate-800 bg-slate-900 p-4">
-        <Inspector />
-        <button
-          onClick={handleSave}
-          disabled={saving || dirtyCount === 0}
-          className="mt-auto rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          {saving
-            ? "Saving…"
-            : dirtyCount > 0
-              ? `Save (${dirtyCount})`
-              : "Saved"}
-        </button>
-      </aside>
+      <InspectorPanel
+        saving={saveScene.isPending}
+        dirtyCount={dirtyCount}
+        onSave={handleSave}
+      />
 
-      <section className="border-t border-slate-800 bg-slate-950 px-4 py-3">
+      <section className="border-t border-line bg-surface-subtle px-4 py-3 md:col-start-2 md:row-start-2">
         <EventLogPanel events={events} />
       </section>
     </div>
+  );
+}
+
+interface ScenePanelProps {
+  scene: SceneDetail;
+  onExport: () => void;
+}
+
+function ScenePanel({ scene, onExport }: ScenePanelProps) {
+  const [open, setOpen] = useState(true);
+  return (
+    <aside
+      className={`flex flex-col gap-5 border-b border-line bg-surface p-4 md:col-start-1 md:row-start-1 md:row-span-2 md:border-b-0 md:border-r ${
+        open ? "" : "md:w-[220px]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 text-xs font-medium text-ink-soft transition hover:text-accent"
+          >
+            ← All scenes
+          </Link>
+          <h2 className="mt-2 truncate text-lg font-semibold tracking-tight text-ink">
+            {scene.name}
+          </h2>
+          {scene.description && (
+            <p className="mt-1 text-xs text-ink-soft">{scene.description}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="hidden shrink-0 rounded-btn border border-line px-2 py-1 text-xs text-ink-faint transition hover:border-line-strong hover:text-ink md:inline"
+          aria-expanded={open}
+          aria-label={open ? "Collapse scene panel" : "Expand scene panel"}
+        >
+          {open ? "◀" : "▶"}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-btn border border-line bg-surface px-3 py-2 text-xs font-medium text-ink-soft transition hover:border-accent hover:bg-accent-tint hover:text-accent"
+          >
+            <ExportIcon />
+            Export scene as JSON
+          </button>
+          <AddObjectMenu />
+        </>
+      )}
+    </aside>
+  );
+}
+
+interface InspectorPanelProps {
+  saving: boolean;
+  dirtyCount: number;
+  onSave: () => void;
+}
+
+function InspectorPanel({ saving, dirtyCount, onSave }: InspectorPanelProps) {
+  const [open, setOpen] = useState(true);
+  return (
+    <aside
+      className={`flex flex-col gap-4 border-t border-line bg-surface p-4 md:col-start-3 md:row-start-1 md:row-span-2 md:border-l md:border-t-0 ${
+        open ? "" : "md:w-[320px]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+          Inspector
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="hidden shrink-0 rounded-btn border border-line px-2 py-1 text-xs text-ink-faint transition hover:border-line-strong hover:text-ink md:inline"
+          aria-expanded={open}
+          aria-label={open ? "Collapse inspector" : "Expand inspector"}
+        >
+          {open ? "▶" : "◀"}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <Inspector />
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || dirtyCount === 0}
+            className="mt-auto rounded-btn bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover disabled:bg-surface-sunken disabled:text-ink-faint disabled:shadow-none"
+          >
+            {saving
+              ? "Saving…"
+              : dirtyCount > 0
+                ? `Save (${dirtyCount})`
+                : "Saved"}
+          </button>
+        </>
+      )}
+    </aside>
   );
 }

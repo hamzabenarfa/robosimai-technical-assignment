@@ -1,9 +1,15 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import { Vector3 } from "three";
-import { api, ApiException } from "@/api/client";
+import { deleteSelectedObject } from "@/lib/sceneActions";
+import { getHelpOpen } from "@/lib/helpOverlayState";
+import {
+  isEditableTarget,
+  matchViewportShortcut,
+  type ShortcutDef,
+} from "@/lib/shortcuts";
 import { useSceneStore } from "@/store/useSceneStore";
-import { useToast } from "@/components/Toast";
+import { useToast } from "@/components/ui/Toast";
 
 const FRAME_DISTANCE = 6;
 const AXIS_DISTANCE = 10;
@@ -22,20 +28,12 @@ export function dispatchViewportCommand(cmd: ViewportCommand): void {
   );
 }
 
-function isEditableTarget(el: EventTarget | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  const tag = el.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  return el.isContentEditable;
-}
-
 export function ViewportKeys() {
   const { camera, scene, controls } = useThree() as any;
   const selectedId = useSceneStore((s) => s.selectedObjectId);
   const sceneData = useSceneStore((s) => s.scene);
   const select = useSceneStore((s) => s.select);
   const setGizmoMode = useSceneStore((s) => s.setGizmoMode);
-  const removeLocal = useSceneStore((s) => s.removeLocalObject);
   const toast = useToast();
 
   useEffect(() => {
@@ -70,7 +68,6 @@ export function ViewportKeys() {
         camera.position.set(...DEFAULT_CAMERA);
         controls.target.set(0, 0, 0);
         controls.update();
-        return;
       }
     }
 
@@ -78,74 +75,59 @@ export function ViewportKeys() {
       runCameraCommand((e as CustomEvent<ViewportCommand>).detail);
     }
 
+    async function runShortcutAction(shortcut: ShortcutDef) {
+      switch (shortcut.id) {
+        case "frame-selected":
+          runCameraCommand({ type: "frame-selected" });
+          break;
+        case "axis-front":
+          runCameraCommand({ type: "axis-view", axis: "front" });
+          break;
+        case "axis-right":
+          runCameraCommand({ type: "axis-view", axis: "right" });
+          break;
+        case "axis-top":
+          runCameraCommand({ type: "axis-view", axis: "top" });
+          break;
+        case "gizmo-translate":
+          setGizmoMode("translate");
+          break;
+        case "gizmo-rotate":
+          setGizmoMode("rotate");
+          break;
+        case "gizmo-scale":
+          setGizmoMode("scale");
+          break;
+        case "deselect":
+          select(null);
+          break;
+        case "delete":
+          if (!selectedId || !sceneData) break;
+          await deleteSelectedObject({
+            sceneId: sceneData.id,
+            objectId: selectedId,
+            onSuccess: () => toast.show("Object deleted", "success"),
+            onError: (message) => toast.show(message, "error"),
+          });
+          break;
+      }
+    }
+
     function onKey(e: KeyboardEvent) {
-      if (isEditableTarget(e.target)) return;
+      if (getHelpOpen() || isEditableTarget(e.target)) return;
 
-      // Frame selected — F or Numpad decimal
-      if (e.key === "f" || e.key === "F" || e.code === "NumpadDecimal") {
-        runCameraCommand({ type: "frame-selected" });
-        e.preventDefault();
-        return;
-      }
+      const shortcut = matchViewportShortcut(e);
+      if (!shortcut) return;
 
-      // Axis views — Blender's numpad 1/3/7
-      if (e.code === "Numpad1") {
-        runCameraCommand({ type: "axis-view", axis: "front" });
-        e.preventDefault();
-        return;
-      }
-      if (e.code === "Numpad3") {
-        runCameraCommand({ type: "axis-view", axis: "right" });
-        e.preventDefault();
-        return;
-      }
-      if (e.code === "Numpad7") {
-        runCameraCommand({ type: "axis-view", axis: "top" });
-        e.preventDefault();
-        return;
-      }
-
-      // Gizmo modes
-      if (e.key === "g" || e.key === "G") {
-        setGizmoMode("translate");
-        return;
-      }
-      if (e.key === "r" || e.key === "R") {
-        setGizmoMode("rotate");
-        return;
-      }
-      if (e.key === "s" || e.key === "S") {
-        setGizmoMode("scale");
-        return;
-      }
-
-      // Deselect
-      if (e.key === "Escape") {
-        select(null);
-        return;
-      }
-
-      // Delete selected
       if (
-        (e.key === "x" || e.key === "X" || e.key === "Delete") &&
-        selectedId &&
-        sceneData
+        shortcut.id === "delete" ||
+        shortcut.id.startsWith("axis-") ||
+        shortcut.id === "frame-selected"
       ) {
-        const id = selectedId;
-        const sceneId = sceneData.id;
-        void (async () => {
-          try {
-            await api.deleteObject(sceneId, id);
-            removeLocal(id);
-            toast.show("Object deleted", "success");
-          } catch (err) {
-            toast.show(
-              err instanceof ApiException ? err.message : "Delete failed",
-              "error",
-            );
-          }
-        })();
+        e.preventDefault();
       }
+
+      void runShortcutAction(shortcut);
     }
 
     window.addEventListener("keydown", onKey);
@@ -162,7 +144,6 @@ export function ViewportKeys() {
     sceneData,
     select,
     setGizmoMode,
-    removeLocal,
     toast,
   ]);
 

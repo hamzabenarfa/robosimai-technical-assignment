@@ -1,4 +1,4 @@
-import type { ObjectType, SceneObject } from "@/types";
+import type { ObjectType, SceneObject } from "@/schemas";
 
 export const OBJECT_COLOR: Record<ObjectType, string> = {
   robot: "#3b82f6",

@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSceneStore, type GizmoMode } from "@/store/useSceneStore";
-import { api, ApiException } from "@/api/client";
-import { useToast } from "@/components/Toast";
+import { deleteSelectedObject } from "@/lib/sceneActions";
+import { shortcutById } from "@/lib/shortcuts";
+import { useToast } from "@/components/ui/Toast";
 import { dispatchViewportCommand } from "@/components/viewer/ViewportKeys";
 
 interface ToolButtonProps {
@@ -21,23 +22,33 @@ function ToolButton({
   onClick,
   children,
 }: ToolButtonProps) {
+  const [showLabel, setShowLabel] = useState(false);
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      onMouseEnter={() => setShowLabel(true)}
+      onMouseLeave={() => setShowLabel(false)}
+      onFocus={() => setShowLabel(true)}
+      onBlur={() => setShowLabel(false)}
       title={shortcut ? `${title} (${shortcut})` : title}
-      className={`group relative flex h-9 w-9 items-center justify-center rounded-md transition ${
+      className={`group relative flex h-11 w-11 items-center justify-center rounded-btn transition md:h-9 md:w-9 ${
         active
-          ? "bg-emerald-500/20 text-emerald-300"
-          : "text-slate-300 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+          ? "bg-accent text-white shadow-sm"
+          : "text-slate-300 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
       }`}
     >
       {children}
-      <span className="pointer-events-none absolute left-12 top-1/2 z-30 hidden -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 shadow-lg group-hover:flex">
+      <span
+        className={`pointer-events-none absolute left-12 top-1/2 z-30 -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-btn border border-white/10 bg-viewport-panel px-2 py-1 text-xs text-slate-100 shadow-float ${
+          showLabel ? "flex" : "hidden"
+        } max-md:group-active:flex md:group-hover:flex`}
+      >
         {title}
         {shortcut && (
-          <kbd className="rounded border border-slate-700 bg-slate-950 px-1 py-0.5 font-mono text-[10px]">
+          <kbd className="rounded border border-white/15 bg-white/5 px-1 py-0.5 font-mono text-[10px]">
             {shortcut}
           </kbd>
         )}
@@ -47,7 +58,7 @@ function ToolButton({
 }
 
 function Divider() {
-  return <div className="my-1 h-px w-7 bg-slate-700" />;
+  return <div className="my-1 h-px w-7 bg-white/10" />;
 }
 
 export function ViewportToolbar() {
@@ -55,72 +66,69 @@ export function ViewportToolbar() {
   const setGizmoMode = useSceneStore((s) => s.setGizmoMode);
   const selectedId = useSceneStore((s) => s.selectedObjectId);
   const sceneData = useSceneStore((s) => s.scene);
-  const removeLocal = useSceneStore((s) => s.removeLocalObject);
   const select = useSceneStore((s) => s.select);
   const toast = useToast();
 
   async function handleDelete() {
     if (!selectedId || !sceneData) return;
-    const id = selectedId;
-    try {
-      await api.deleteObject(sceneData.id, id);
-      removeLocal(id);
-      toast.show("Object deleted", "success");
-    } catch (e) {
-      toast.show(
-        e instanceof ApiException ? e.message : "Delete failed",
-        "error",
-      );
-    }
+    await deleteSelectedObject({
+      sceneId: sceneData.id,
+      objectId: selectedId,
+      onSuccess: () => toast.show("Object deleted", "success"),
+      onError: (message) => toast.show(message, "error"),
+    });
   }
 
-  const modes: Array<{ mode: GizmoMode; label: string; key: string; icon: ReactNode }> = [
-    { mode: "translate", label: "Move", key: "G", icon: <MoveIcon /> },
-    { mode: "rotate", label: "Rotate", key: "R", icon: <RotateIcon /> },
-    { mode: "scale", label: "Scale", key: "S", icon: <ScaleIcon /> },
+  const modes: Array<{ mode: GizmoMode; shortcutId: string; icon: ReactNode }> = [
+    { mode: "translate", shortcutId: "gizmo-translate", icon: <MoveIcon /> },
+    { mode: "rotate", shortcutId: "gizmo-rotate", icon: <RotateIcon /> },
+    { mode: "scale", shortcutId: "gizmo-scale", icon: <ScaleIcon /> },
   ];
 
   return (
-    <div className="pointer-events-auto absolute left-3 top-3 z-10 flex flex-col items-center gap-0.5 rounded-lg border border-slate-700 bg-slate-900/80 p-1 shadow-lg backdrop-blur">
-      {modes.map(({ mode, label, key, icon }) => (
-        <ToolButton
-          key={mode}
-          title={label}
-          shortcut={key}
-          active={gizmoMode === mode}
-          onClick={() => setGizmoMode(mode)}
-        >
-          {icon}
-        </ToolButton>
-      ))}
+    <div className="pointer-events-auto absolute left-3 top-3 z-10 flex flex-col items-center gap-0.5 rounded-panel border border-white/10 bg-viewport-panel/80 p-1 shadow-float backdrop-blur">
+      {modes.map(({ mode, shortcutId, icon }) => {
+        const shortcut = shortcutById(shortcutId);
+        return (
+          <ToolButton
+            key={mode}
+            title={shortcut?.label ?? mode}
+            shortcut={shortcut?.toolbarKey}
+            active={gizmoMode === mode}
+            onClick={() => setGizmoMode(mode)}
+          >
+            {icon}
+          </ToolButton>
+        );
+      })}
 
       <Divider />
 
       <ToolButton
-        title="Frame selected"
-        shortcut="F"
+        title={shortcutById("frame-selected")?.label ?? "Frame selected"}
+        shortcut={shortcutById("frame-selected")?.toolbarKey}
         disabled={!selectedId}
         onClick={() => dispatchViewportCommand({ type: "frame-selected" })}
       >
         <FocusIcon />
       </ToolButton>
       <ToolButton
-        title="Front view"
-        shortcut="1"
+        title={shortcutById("axis-front")?.label ?? "Front view"}
+        shortcut={shortcutById("axis-front")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "front" })}
       >
         <DigitIcon>1</DigitIcon>
       </ToolButton>
       <ToolButton
-        title="Right view"
-        shortcut="3"
+        title={shortcutById("axis-right")?.label ?? "Right view"}
+        shortcut={shortcutById("axis-right")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "right" })}
       >
         <DigitIcon>3</DigitIcon>
       </ToolButton>
       <ToolButton
-        title="Top view"
-        shortcut="7"
+        title={shortcutById("axis-top")?.label ?? "Top view"}
+        shortcut={shortcutById("axis-top")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "top" })}
       >
         <DigitIcon>7</DigitIcon>
@@ -135,16 +143,16 @@ export function ViewportToolbar() {
       <Divider />
 
       <ToolButton
-        title="Delete"
-        shortcut="X"
+        title={shortcutById("delete")?.label ?? "Delete"}
+        shortcut={shortcutById("delete")?.toolbarKey}
         disabled={!selectedId}
         onClick={handleDelete}
       >
         <TrashIcon />
       </ToolButton>
       <ToolButton
-        title="Deselect"
-        shortcut="Esc"
+        title={shortcutById("deselect")?.label ?? "Deselect"}
+        shortcut={shortcutById("deselect")?.toolbarKey}
         disabled={!selectedId}
         onClick={() => select(null)}
       >
@@ -153,8 +161,6 @@ export function ViewportToolbar() {
     </div>
   );
 }
-
-// --- Icons (inline SVG, 18x18 stroke) ---
 
 const ICON_PROPS = {
   width: 18,

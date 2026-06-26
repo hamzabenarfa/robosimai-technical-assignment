@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.errors import SceneNotFound
 from app.models import Scene, SceneObject
-from app.schemas import SceneCreate, SceneExport, SceneUpdate
+from app.schemas import SceneCreate, SceneExport, SceneObjectExport, SceneUpdate
 from app.services.event_service import log_event
 
 
@@ -85,13 +85,13 @@ def export_scene(db: Session, scene_id: uuid.UUID) -> SceneExport:
         name=scene.name,
         description=scene.description,
         objects=[
-            {
-                "type": o.type,
-                "position": o.position,
-                "rotation": o.rotation,
-                "scale": o.scale,
-                "metadata": o.meta,
-            }
+            SceneObjectExport(
+                type=o.type,
+                position=o.position,
+                rotation=o.rotation,
+                scale=o.scale,
+                metadata=o.meta,
+            )
             for o in scene.objects
         ],
     )

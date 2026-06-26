@@ -1,5 +1,5 @@
 import type { ThreeEvent } from "@react-three/fiber";
-import type { SceneObject as SceneObjectType } from "@/types";
+import type { SceneObject as SceneObjectType } from "@/schemas";
 import { OBJECT_COLOR } from "@/lib/objectDefaults";
 
 interface Props {

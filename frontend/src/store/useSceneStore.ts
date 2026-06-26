@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SceneDetail, SceneObject, Vec3 } from "@/types";
+import type { SceneDetail, SceneObject, Vec3 } from "@/schemas";
 
 type DirtyMap = Record<string, true>;
 

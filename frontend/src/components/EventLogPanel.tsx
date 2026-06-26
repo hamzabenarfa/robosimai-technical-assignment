@@ -1,4 +1,4 @@
-import type { EventLog } from "@/types";
+import type { EventLog } from "@/schemas";
 
 interface Props {
   events: EventLog[];
@@ -7,20 +7,26 @@ interface Props {
 export function EventLogPanel({ events }: Props) {
   return (
     <div className="flex h-full flex-col">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-        Event log
-      </p>
-      <ul className="mt-2 max-h-40 flex-1 space-y-1 overflow-y-auto font-mono text-xs text-slate-300">
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+          Event log
+        </p>
+      </div>
+      <ul className="mt-2 max-h-40 flex-1 space-y-0.5 overflow-y-auto font-mono text-xs text-ink-soft">
         {events.length === 0 && (
-          <li className="text-slate-600">No events yet.</li>
+          <li className="text-ink-faint">No events yet.</li>
         )}
         {events.map((e) => (
-          <li key={e.id} className="flex gap-3">
-            <span className="text-slate-500">
+          <li
+            key={e.id}
+            className="flex gap-3 rounded px-1 py-0.5 hover:bg-surface-sunken"
+          >
+            <span className="shrink-0 tabular-nums text-ink-faint">
               {new Date(e.timestamp).toLocaleTimeString()}
             </span>
-            <span className="text-emerald-400">{e.action}</span>
-            <span className="truncate text-slate-500">
+            <span className="shrink-0 font-semibold text-accent">{e.action}</span>
+            <span className="truncate text-ink-faint">
               {summarize(e.payload)}
             </span>
           </li>
