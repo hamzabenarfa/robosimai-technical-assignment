@@ -13,6 +13,7 @@ interface SceneState {
   dirty: DirtyMap;
 
   setScene: (scene: SceneDetail) => void;
+  patchScene: (patch: Partial<Pick<SceneDetail, "name" | "description">>) => void;
   select: (id: string | null) => void;
   setGizmoMode: (mode: GizmoMode) => void;
   upsertLocalObject: (obj: SceneObject) => void;
@@ -36,6 +37,11 @@ export const useSceneStore = create<SceneState>((set) => ({
   dirty: {},
 
   setScene: (scene) => set({ scene, dirty: {}, selectedObjectId: null }),
+
+  patchScene: (patch) =>
+    set((state) =>
+      state.scene ? { scene: { ...state.scene, ...patch } } : state,
+    ),
 
   select: (id) => set({ selectedObjectId: id }),
 

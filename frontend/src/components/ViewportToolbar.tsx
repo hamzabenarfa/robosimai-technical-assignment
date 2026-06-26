@@ -117,21 +117,21 @@ export function ViewportToolbar() {
         shortcut={shortcutById("axis-front")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "front" })}
       >
-        <DigitIcon>1</DigitIcon>
+        <ViewCubeIcon face="front" />
       </ToolButton>
       <ToolButton
         title={shortcutById("axis-right")?.label ?? "Right view"}
         shortcut={shortcutById("axis-right")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "right" })}
       >
-        <DigitIcon>3</DigitIcon>
+        <ViewCubeIcon face="right" />
       </ToolButton>
       <ToolButton
         title={shortcutById("axis-top")?.label ?? "Top view"}
         shortcut={shortcutById("axis-top")?.toolbarKey}
         onClick={() => dispatchViewportCommand({ type: "axis-view", axis: "top" })}
       >
-        <DigitIcon>7</DigitIcon>
+        <ViewCubeIcon face="top" />
       </ToolButton>
       <ToolButton
         title="Reset view"
@@ -247,10 +247,29 @@ function DeselectIcon() {
   );
 }
 
-function DigitIcon({ children }: { children: ReactNode }) {
+// A small orthographic cube; the highlighted face signals which axis view the
+// button jumps to (front / right / top), reading clearer than a bare digit.
+function ViewCubeIcon({ face }: { face: "front" | "right" | "top" }) {
+  const TOP = "M12 2.5L20 7L12 11.5L4 7Z";
+  const FRONT = "M4 7L12 11.5L12 21L4 16.5Z";
+  const RIGHT = "M20 7L12 11.5L12 21L20 16.5Z";
   return (
-    <span className="font-mono text-[13px] font-semibold leading-none">
-      {children}
-    </span>
+    <svg {...ICON_PROPS}>
+      <path
+        d={TOP}
+        fill={face === "top" ? "currentColor" : "none"}
+        fillOpacity={face === "top" ? 0.85 : 0}
+      />
+      <path
+        d={FRONT}
+        fill={face === "front" ? "currentColor" : "none"}
+        fillOpacity={face === "front" ? 0.85 : 0}
+      />
+      <path
+        d={RIGHT}
+        fill={face === "right" ? "currentColor" : "none"}
+        fillOpacity={face === "right" ? 0.85 : 0}
+      />
+    </svg>
   );
 }

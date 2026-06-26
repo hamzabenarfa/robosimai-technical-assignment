@@ -1,5 +1,65 @@
 /** Small, presentational SVG icons shared across the scene screens. */
 
+import type { ReactNode } from "react";
+import type { ObjectType } from "@/schemas";
+
+// One recognisable glyph per object type, drawn on a shared 24×24 grid so they
+// line up wherever an object is listed (add menu, inspector header).
+const OBJECT_ICON_PATHS: Record<ObjectType, ReactNode> = {
+  robot: (
+    <>
+      <rect x="5" y="8" width="14" height="11" rx="2" />
+      <path d="M12 8V4" />
+      <circle cx="12" cy="3" r="1" />
+      <path d="M9 13h.01M15 13h.01" />
+    </>
+  ),
+  box: (
+    <>
+      <path d="M21 8l-9-5-9 5 9 5 9-5z" />
+      <path d="M3 8v8l9 5 9-5V8" />
+      <path d="M12 13v8" />
+    </>
+  ),
+  shelf: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M4 9h16M4 15h16" />
+    </>
+  ),
+  conveyor: (
+    <>
+      <circle cx="6" cy="14" r="2.5" />
+      <circle cx="18" cy="14" r="2.5" />
+      <path d="M6 11.5h12M6 16.5h12" />
+    </>
+  ),
+  obstacle: (
+    <>
+      <path d="M10.3 4l-7 12a2 2 0 001.7 3h14a2 2 0 001.7-3l-7-12a2 2 0 00-3.4 0z" />
+      <path d="M12 10v3M12 16h.01" />
+    </>
+  ),
+};
+
+export function ObjectIcon({ type, size = 16 }: { type: ObjectType; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {OBJECT_ICON_PATHS[type]}
+    </svg>
+  );
+}
+
 export function ImportIcon() {
   return (
     <svg

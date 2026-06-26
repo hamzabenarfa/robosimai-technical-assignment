@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { deleteSelectedObject } from "@/lib/sceneActions";
 import { useSceneStore } from "@/store/useSceneStore";
 import { useToast } from "@/components/ui/Toast";
-import { OBJECT_LABEL } from "@/lib/objectDefaults";
+import { ObjectIcon } from "@/components/icons";
+import { OBJECT_COLOR, OBJECT_LABEL } from "@/lib/objectDefaults";
 import type { Vec3 } from "@/schemas";
 
 const FIELDS: Array<{
@@ -106,16 +107,25 @@ export function Inspector() {
 
   return (
     <div className="flex flex-col gap-4 text-sm">
-      <div className="rounded-panel border border-line bg-surface-subtle px-3 py-2.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-          Selected
-        </p>
-        <p className="mt-0.5 text-base font-medium text-ink">
-          {OBJECT_LABEL[selected.type]}
-        </p>
-        <p className="truncate font-mono text-[11px] text-ink-faint">
-          {selected.id}
-        </p>
+      <div className="flex items-center gap-3 rounded-panel border border-line bg-surface-subtle px-3 py-2.5">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn bg-surface-sunken"
+          style={{ color: OBJECT_COLOR[selected.type] }}
+          aria-hidden="true"
+        >
+          <ObjectIcon type={selected.type} size={18} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+            Selected
+          </p>
+          <p className="text-base font-medium text-ink">
+            {OBJECT_LABEL[selected.type]}
+          </p>
+          <p className="truncate font-mono text-[11px] text-ink-faint">
+            {selected.id}
+          </p>
+        </div>
       </div>
 
       {FIELDS.map(({ key, label, isAngle }) => (

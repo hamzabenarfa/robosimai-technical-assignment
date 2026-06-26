@@ -1,6 +1,7 @@
 import { api, ApiException } from "@/api/client";
 import { useSceneStore } from "@/store/useSceneStore";
 import { useToast } from "@/components/ui/Toast";
+import { ObjectIcon } from "@/components/icons";
 import { OBJECT_COLOR, OBJECT_LABEL, defaultObjectPayload } from "@/lib/objectDefaults";
 import { captureViewport } from "@/lib/captureViewport";
 import { OBJECT_TYPES, type ObjectType } from "@/schemas";
@@ -55,13 +56,8 @@ export function AddObjectMenu() {
           onClick={() => add(type)}
           className="group flex items-center gap-2.5 rounded-btn border border-line bg-surface px-3 py-2 text-left text-sm font-medium text-ink shadow-card transition hover:-translate-y-px hover:border-accent hover:bg-accent-tint hover:text-accent motion-reduce:transform-none"
         >
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
-            style={{ backgroundColor: OBJECT_COLOR[type] }}
-            aria-hidden="true"
-          />
-          <span className="text-ink-faint transition group-hover:text-accent">
-            +
+          <span className="shrink-0" style={{ color: OBJECT_COLOR[type] }}>
+            <ObjectIcon type={type} />
           </span>
           {OBJECT_LABEL[type]}
         </button>
