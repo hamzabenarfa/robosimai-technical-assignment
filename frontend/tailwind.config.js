@@ -25,33 +25,33 @@ export default {
       },
       colors: {
         // Text
-        ink: { DEFAULT: "#16181d", soft: "#5a6472", faint: "#98a2b3" },
+        ink: { DEFAULT: "#e6e8ec", soft: "#a0a8b4", faint: "#6b7482" },
         // Borders / dividers
-        line: { DEFAULT: "#e6e8ec", strong: "#d3d7de" },
-        // Light panel surfaces
-        surface: { DEFAULT: "#ffffff", subtle: "#f6f7f9", sunken: "#eef0f3" },
-        // Teal accent system
+        line: { DEFAULT: "#262b33", strong: "#363d48" },
+        // Dark panel surfaces, layered for depth (subtle = page, DEFAULT = panel, sunken = inputs)
+        surface: { DEFAULT: "#161a21", subtle: "#0f1117", sunken: "#0b0d11" },
+        // Teal accent system, brightened for dark backgrounds
         accent: {
-          DEFAULT: "#0f766e",
-          hover: "#0d9488",
-          ink: "#0a5e57",
-          soft: "#d4f1ec",
-          tint: "#f0fdfa",
+          DEFAULT: "#0d9488",
+          hover: "#14b8a6",
+          ink: "#5eead4",
+          soft: "#0f3b36",
+          tint: "#0e211e",
         },
-        // Dark 3D viewport (kept dark for contrast)
-        viewport: { DEFAULT: "#0c0e12", panel: "#161a21" },
-        danger: { DEFAULT: "#dc2626", soft: "#fef2f2", line: "#f3c7c7" },
+        // 3D viewport (deepest tone so it reads as a recessed focal area)
+        viewport: { DEFAULT: "#0a0c10", panel: "#161a21" },
+        danger: { DEFAULT: "#f87171", soft: "#2a1517", line: "#5a2a2c" },
       },
       borderRadius: {
         panel: "0.75rem",
         btn: "0.5rem",
       },
       boxShadow: {
-        // Soft, layered elevation tuned for a light UI
-        card: "0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)",
+        // Elevation for a dark UI: deep black drop plus a faint top highlight
+        card: "0 1px 2px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)",
         panel:
-          "0 1px 2px rgba(16,24,40,0.04), 0 12px 32px -8px rgba(16,24,40,0.14)",
-        float: "0 8px 24px rgba(8,12,20,0.45)",
+          "0 1px 2px rgba(0,0,0,0.4), 0 16px 40px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04)",
+        float: "0 12px 32px rgba(0,0,0,0.65)",
       },
       keyframes: {
         "toast-in": {
