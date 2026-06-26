@@ -1,6 +1,13 @@
 # RoboSim Scene Manager
 
-> 🎥 **Demo video → [`docs/demo.mp4`](docs/demo.mp4)** — full ~5:40 walkthrough (startup, editor flow, persistence, API). Click to play it on GitHub; the file also lives in this repo's `docs/` folder.
+🎥 **Demo walkthrough** — ~5:40: one-command startup → editor (create scene, add objects, select, edit, save) → persistence → direct API testing.
+
+> 📥 **Full-HD (1080p) version:** [`docs/demo.mp4`](docs/demo.mp4) is committed in this repo — **download the file to watch it in full resolution.**
+
+
+https://github.com/user-attachments/assets/a12594c8-74b2-4022-ae7c-9ecd047d54aa
+
+
 
 A small full-stack web app to create, view, edit, and save simple 3D robotics simulation scenes.
 
