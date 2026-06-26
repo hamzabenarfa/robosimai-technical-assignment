@@ -1,0 +1,369 @@
+{
+  "info": {
+    "name": "RoboSim Scene Manager API",
+    "description": "Curated happy-path + error-case collection for the RoboSim Scene Manager backend.\n\n## How to use\n1. Start the stack: `docker compose up --build`\n2. The `baseUrl` variable defaults to http://localhost:8080 (nginx proxies /api to the backend). For a directly-exposed backend use http://localhost:8000.\n3. Run the requests top to bottom, or hit **Run collection**. Requests auto-chain: creating a scene stores its id in `sceneId`, adding an object stores `objectId`, so later requests just work.\n\nEach request has test scripts asserting the status code and (for errors) the `{detail, code}` envelope.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "sceneId", "value": "", "type": "string" },
+    { "key": "objectId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Happy path",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List scenes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes", "host": ["{{baseUrl}}"], "path": ["api", "scenes"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('returns an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create scene  (201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Warehouse demo\",\n  \"description\": \"Created from Postman\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/scenes", "host": ["{{baseUrl}}"], "path": ["api", "scenes"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('name echoed', () => pm.expect(body.name).to.eql('Warehouse demo'));",
+                  "pm.test('starts with no objects', () => pm.expect(body.objects).to.eql([]));",
+                  "pm.collectionVariables.set('sceneId', body.id);",
+                  "console.log('sceneId =', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get scene by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('id matches', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('sceneId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update scene name  (logs scene.updated)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Warehouse demo (renamed)\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('name updated', () => pm.expect(pm.response.json().name).to.eql('Warehouse demo (renamed)'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add object: robot  (201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"robot\",\n  \"position\": { \"x\": 1, \"y\": 0, \"z\": 2 },\n  \"rotation\": { \"x\": 0, \"y\": 0, \"z\": 0 },\n  \"scale\": { \"x\": 1, \"y\": 1, \"z\": 1 },\n  \"metadata\": { \"name\": \"Wall-E\" }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/objects", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}", "objects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('type is robot', () => pm.expect(body.type).to.eql('robot'));",
+                  "pm.collectionVariables.set('objectId', body.id);",
+                  "console.log('objectId =', body.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add object: box  (201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"box\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/objects", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}", "objects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('defaults applied', () => pm.expect(pm.response.json().scale).to.eql({ x: 1, y: 1, z: 1 }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update object transform",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"position\": { \"x\": 5, \"y\": 0, \"z\": 5 },\n  \"metadata\": { \"name\": \"Wall-E\", \"battery\": 80 }\n}" },
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/objects/{{objectId}}", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}", "objects", "{{objectId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('position moved', () => pm.expect(pm.response.json().position.x).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List events  (newest first)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/events?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenes", "{{sceneId}}", "events"],
+              "query": [{ "key": "limit", "value": "50" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const actions = pm.response.json().map(e => e.action);",
+                  "pm.test('logged scene.created', () => pm.expect(actions).to.include('scene.created'));",
+                  "pm.test('logged object.added', () => pm.expect(actions).to.include('object.added'));",
+                  "console.log('events:', actions.join(', '));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export scene as JSON  (bonus)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/export", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}", "export"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('has schema_version', () => pm.expect(body.schema_version).to.eql(1));",
+                  "pm.test('export has objects', () => pm.expect(body.objects.length).to.be.above(0));",
+                  "pm.collectionVariables.set('exportedScene', JSON.stringify(body));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Import scene from JSON  (bonus)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_version\": 1,\n  \"name\": \"Imported copy\",\n  \"description\": \"Round-tripped via export\",\n  \"objects\": [\n    { \"type\": \"shelf\", \"position\": { \"x\": 0, \"y\": 0, \"z\": 0 }, \"metadata\": {} },\n    { \"type\": \"conveyor\", \"position\": { \"x\": 3, \"y\": 0, \"z\": 0 }, \"metadata\": {} }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/scenes/import", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "import"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created (200/201)', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const body = pm.response.json();",
+                  "pm.test('name from payload', () => pm.expect(body.name).to.eql('Imported copy'));",
+                  "pm.test('objects imported', () => pm.expect(body.objects.length).to.eql(2));",
+                  "pm.test('new server id', () => pm.expect(body.id).to.not.eql(pm.collectionVariables.get('sceneId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete object  (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}/objects/{{objectId}}", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}", "objects", "{{objectId}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"] } }
+          ]
+        },
+        {
+          "name": "Delete scene  (204, cascades)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes/{{sceneId}}", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "{{sceneId}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error handling",
+      "description": "Proves the consistent { detail, code } envelope and correct status codes.",
+      "item": [
+        {
+          "name": "404 — scene not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/scenes/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "00000000-0000-0000-0000-000000000000"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('envelope shape', () => { pm.expect(body).to.have.property('detail'); pm.expect(body).to.have.property('code'); });",
+                  "pm.test('code is SCENE_NOT_FOUND', () => pm.expect(body.code).to.eql('SCENE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — validation error (missing name)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/api/scenes", "host": ["{{baseUrl}}"], "path": ["api", "scenes"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('code is VALIDATION_ERROR', () => pm.expect(body.code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('includes field errors', () => pm.expect(body.errors).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — invalid object type",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"spaceship\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/scenes/00000000-0000-0000-0000-000000000000/objects", "host": ["{{baseUrl}}"], "path": ["api", "scenes", "00000000-0000-0000-0000-000000000000", "objects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('code is VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

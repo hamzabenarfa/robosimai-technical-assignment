@@ -15,6 +15,12 @@ This is **not** a simulator — it's a CRUD app with a 3D viewport, built as a t
 
 ---
 
+## Demo
+
+A full walkthrough — one-command startup, the editor (create scene → add objects → select → edit → save), persistence, and direct API testing — is recorded in **[`docs/demo.mp4`](docs/demo.mp4)** (~5:40).
+
+---
+
 ## 1. Setup
 
 **Prerequisites:** Docker 24+ and Docker Compose v2.
@@ -289,6 +295,10 @@ TEST_DATABASE_URL=postgresql+psycopg://robosim:robosim@localhost:5433/robosim_te
 ```
 
 GitHub Actions runs the same suite (with a Postgres service container) plus a frontend `bun run build` on every push — see `.github/workflows/ci.yml`.
+
+### Testing the API with Postman
+
+Import **[`docs/RoboSim.postman_collection.json`](docs/RoboSim.postman_collection.json)** into Postman (Import → drag the file in). It has two folders: a **Happy path** that runs the full lifecycle in order (requests auto-chain the created scene/object ids) and an **Error handling** folder that asserts the `{detail, code}` envelope on `404` / `422`. Set the `baseUrl` variable to `http://localhost:8080` (default) or `http://localhost:8000` for the backend directly. Prefer no install? Import `http://localhost:8080/openapi.json` for an auto-generated collection.
 
 ## Editor controls
 
